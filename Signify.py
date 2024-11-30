@@ -7,13 +7,16 @@ import subprocess
 import threading
 
 # Current version of the script
-VERSION_FILE = "version.txt"  # File to store the last executed version
 CURRENT_VERSION = "0.0.3"
+
+if os.path.exists("launcher.bat"):
+    os.remove("launcher.bat")
 
 # Returns the contents of version.txt file from github repo
 def fetch_version_from_github():
     """Fetch a file's contents from a GitHub repository."""
-    url = f"https://api.github.com/repos/ScriptTommy/Python-Script-Windows/contents/version.txt?ref=main"
+    # url = f"https://api.github.com/repos/ScriptTommy/Python-Script-Windows/contents/version.txt?ref=main"
+    url = f"https://api.github.com/repos/usman317319/test1/contents/version.txt?ref=main"
     headers = {}
 
     response = requests.get(url, headers=headers)
@@ -30,11 +33,14 @@ def fetch_version_from_github():
 def download_executable():
     """Download the file from the given URL and save it as a temporary file."""
     try:
-        url = "https://api.github.com/repos/usman317319/test1/contents/Signify.py?ref=main"
+        url = "https://raw.githubusercontent.com/usman317319/test1/main/Signify.py"
         response = requests.get(url, stream=True)
+
         if response.status_code == 200:
-            with open("new_Signify.exe", 'wb') as file:
-                shutil.copyfileobj(response.raw, file)
+            with open("Signify.py", 'wb') as file:
+                for chunk in response.iter_content(chunk_size=8192):  # Process the response in chunks
+                    file.write(chunk)
+
             print(f"File downloaded successfully")
         else:
             print(f"Failed to download file: {response.status_code} - {response.text}")
@@ -44,17 +50,20 @@ def download_executable():
         sys.exit(1)
 
 # Another Process in a separate thread is initiated which will then delete, rename and Execute the new executble
-def hand_over():
+def hand_over(latest_version):
     # Write the launcher script
+    current_exe_name = os.path.basename(sys.argv[0]).replace(".py", ".exe")
     with open("launcher.bat", "w") as launcher:
-        launcher.write("""
-        timeout /t 2 > nul
-        del Signify.exe
-        pip install pyinstaller
-        pyinstaller Signify.py
-        del Signify.py
+        launcher.write(f"""
+        timeout /t 1 >nul
+        del {current_exe_name}
+        pyinstaller --onefile Signify.py
+        start .\dist\Signify.exe
+        cls
         """)
 
+    global CURRENT_VERSION
+    CURRENT_VERSION = latest_version
     subprocess.Popen(["cmd", "/c", "start", "launcher.bat"])
     os._exit(0)
 
@@ -75,7 +84,7 @@ def check_for_updates():
             # Perform the update here. This can be downloading a new executable, etc.
             download_executable()
             print("Download Complete. Installing...")
-            hand_over()
+            hand_over(latest_version= latest_version)
 
         else:
             print("Skipping update. You can continue using the current version.")
